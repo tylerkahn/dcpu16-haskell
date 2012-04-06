@@ -110,6 +110,13 @@ operandAction a
     | a == 0x1f = liftM (, Literal) nextWord
     | otherwise = return (fromIntegral (a - 32), Literal)
 
+skipNextInstruction = do
+    cpu <- get
+    (_, arg1, arg2) <- fmap decodeWord nextWord
+    operandAction arg1 >> operandAction arg2
+    cpu' <- get
+    put $ cpu { pc = (pc cpu') }
+
 set :: CellAddr -> Word16 -> State DCPUState ()
 set (Reg a) b = do
             cpu <- get
@@ -157,10 +164,10 @@ instructionAction' op a b addr
     | op == AND = set addr $ fromIntegral $ a .&. b
     | op == BOR = set addr $ fromIntegral $ a .|. b
     | op == XOR = set addr $ fromIntegral $ a `xor` b
-    | op == IFE = unless (a == b) $ skip >> skip
-    | op == IFN = unless (a /= b) $ skip >> skip
-    | op == IFG = unless (a > b) $ skip >> skip
-    | op == IFB = unless ((a .&. b) /= 0) $ skip >> skip
+    | op == IFE = unless (a == b) $ skipNextInstruction
+    | op == IFN = unless (a /= b) $ skipNextInstruction
+    | op == IFG = unless (a > b) $ skipNextInstruction
+    | op == IFB = unless ((a .&. b) /= 0) $ skipNextInstruction
 
 instructionAction :: Integral a => BasicOpcode -> a -> a -> State DCPUState ()
 instructionAction NonBasic o a = do
