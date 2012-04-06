@@ -140,7 +140,7 @@ instructionAction' op a b addr
         set addr $ fromIntegral sum
     | op == SUB = do
         let diff = a - b
-        -- TODO: wtf is integer underflow?
+        set O (if testBit diff 16 then 0xffff else 0x0)
         set addr $ fromIntegral diff
     | op == MUL = do
         let prod = a * b
