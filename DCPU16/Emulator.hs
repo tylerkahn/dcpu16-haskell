@@ -32,12 +32,8 @@ data Instruction = Instruction BasicOpcode Word8 Word8
 data CellAddr = RAM Word16 | Reg Word8 | SP | PC | O | Literal
     deriving (Eq, Show)
 
-data BasicOpcode = NonBasic
-    | SET | ADD | SUB
-    | MUL | DIV | MOD
-    | SHL | SHR | AND
-    | BOR | XOR | IFE
-    | IFN | IFG | IFB
+data BasicOpcode = NonBasic | SET | ADD | SUB | MUL | DIV | MOD
+    | SHL | SHR | AND | BOR | XOR | IFE | IFN | IFG | IFB
         deriving (Show, Eq, Enum)
 
 data NonBasicOpcode = Reserved | JSR | HLT
@@ -66,8 +62,7 @@ skip = void nextWord
 
 push :: Word16 -> State DCPUState ()
 push x = do
-    cpu <- get
-    let sp' = sp cpu - 1
+    sp' <- liftM (+ (-1)) (gets sp)
     modify (\cpu -> cpu {sp = sp', ram = replaceNth sp' x (ram cpu) })
 
 incCyclesBy :: Int -> State DCPUState ()
@@ -115,7 +110,6 @@ operandAction a
     | a == 0x1f = liftM (, Literal) nextWord
     | otherwise = return (fromIntegral (a - 32), Literal)
 
-
 set :: CellAddr -> Word16 -> State DCPUState ()
 set (Reg a) b = do
             cpu <- get
@@ -128,44 +122,45 @@ set (RAM a) b = do
 set SP b = modify (\cpu -> cpu { sp = b })
 set PC b = modify (\cpu -> cpu { pc = b - 1 })
 set O b = modify (\cpu -> cpu { o = b })
-set Literal b = modify id
+set Literal b = return ()
 
 instructionAction' :: BasicOpcode -> Word32 -> Word32 -> CellAddr -> State DCPUState ()
-instructionAction' SET a b addr = set addr (fromIntegral b)
-instructionAction' ADD a b addr = do
-    let sum = a + b
-    set O (if testBit sum 16 then 0x1 else 0x0)
-    set addr $ fromIntegral sum
-instructionAction' SUB a b addr = do
-    let diff = a - b
-    -- TODO: wtf is integer underflow?
-    set addr $ fromIntegral diff
-instructionAction' MUL a b addr = do
-    let prod = a * b
-    set O $ fromIntegral (prod `shiftR` 16)
-    set addr $ fromIntegral prod
-instructionAction' DIV a 0 addr = set addr 0 >> set O 0
-instructionAction' DIV a b addr = do
-    let quotient = div a b
-    set O $ fromIntegral ((a `shiftL` 16) `div` b)
-    set addr $ fromIntegral quotient
-instructionAction' MOD a 0 addr = set addr 0
-instructionAction' MOD a b addr = set addr $ fromIntegral $ mod a b
-instructionAction' SHL a b addr = do
-    let shifted = a `shiftL` fromIntegral b
-    set O $ fromIntegral (shifted `shiftR` 16)
-    set addr $ fromIntegral shifted
-instructionAction' SHR a b addr = do
-    let shifted = a `shiftR` fromIntegral b
-    set O $ fromIntegral ((a `shiftL` 16) `shiftR` fromIntegral b)
-    set addr $ fromIntegral shifted
-instructionAction' AND a b addr = set addr $ fromIntegral $ a .&. b
-instructionAction' BOR a b addr = set addr $ fromIntegral $ a .|. b
-instructionAction' XOR a b addr = set addr $ fromIntegral $ a `xor` b
-instructionAction' IFE a b _ = unless (a == b) $ skip >> skip
-instructionAction' IFN a b _ = unless (a /= b) $ skip >> skip
-instructionAction' IFG a b _ = unless (a > b) $ skip >> skip
-instructionAction' IFB a b _ = unless ((a .&. b) /= 0) $ skip >> skip
+instructionAction' op a b addr
+    | op == SET = set addr (fromIntegral b)
+    | op == ADD = do
+        let sum = a + b
+        set O (if testBit sum 16 then 0x1 else 0x0)
+        set addr $ fromIntegral sum
+    | op == SUB = do
+        let diff = a - b
+        -- TODO: wtf is integer underflow?
+        set addr $ fromIntegral diff
+    | op == MUL = do
+        let prod = a * b
+        set O $ fromIntegral (prod `shiftR` 16)
+        set addr $ fromIntegral prod
+    | op == DIV = case b of 0 -> set addr 0 >> set O 0
+                            _ -> do
+                                let quotient = div a b
+                                set O $ fromIntegral ((a `shiftL` 16) `div` b)
+                                set addr $ fromIntegral quotient
+    | op == MOD = case b of 0 -> set addr 0
+                            _ -> set addr $ fromIntegral $ mod a b
+    | op == SHL = do
+        let shifted = a `shiftL` fromIntegral b
+        set O $ fromIntegral (shifted `shiftR` 16)
+        set addr $ fromIntegral shifted
+    | op == SHR = do
+        let shifted = a `shiftR` fromIntegral b
+        set O $ fromIntegral ((a `shiftL` 16) `shiftR` fromIntegral b)
+        set addr $ fromIntegral shifted
+    | op == AND = set addr $ fromIntegral $ a .&. b
+    | op == BOR = set addr $ fromIntegral $ a .|. b
+    | op == XOR = set addr $ fromIntegral $ a `xor` b
+    | op == IFE = unless (a == b) $ skip >> skip
+    | op == IFN = unless (a /= b) $ skip >> skip
+    | op == IFG = unless (a > b) $ skip >> skip
+    | op == IFB = unless ((a .&. b) /= 0) $ skip >> skip
 
 instructionAction :: Integral a => BasicOpcode -> a -> a -> State DCPUState ()
 instructionAction NonBasic o a = do
@@ -177,18 +172,18 @@ instructionAction o a b = do
     instructionAction' o (fromIntegral a') (fromIntegral b') addr
 
 nonBasicInstructionAction :: Integral a => NonBasicOpcode -> a -> CellAddr -> State DCPUState ()
-nonBasicInstructionAction JSR a _ = do
-    pc' <- fmap pc get
-    push $ pc' + 1
-    modify (\cpu -> cpu { pc = fromIntegral (a - 1) })
-nonBasicInstructionAction HLT _ _ = modify (\cpu -> cpu { hlt = 0x1 })
+nonBasicInstructionAction op a addr
+    | op == JSR = do
+        pc' <- gets pc
+        push $ pc' + 1
+        modify (\cpu -> cpu { pc = fromIntegral (a - 1) })
+    | op == HLT = modify (\cpu -> cpu { hlt = 0x1 })
 
 pulse :: State DCPUState DCPUState
 pulse = do
     (op, arg1, arg2) <- fmap decodeWord $ gets currentWord
     instructionAction op arg1 arg2
-    skip
-    get
+    skip >> get
 
 runUntil :: Monad m => (a -> Bool) -> StateT a m b -> a -> m [(b, a)]
 runUntil p st i = if p i then return [] else do
