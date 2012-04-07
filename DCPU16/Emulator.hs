@@ -67,7 +67,7 @@ skipNextInstruction = do
 
 push :: Word16 -> State DCPUState ()
 push x = do
-    sp' <- liftM (+ (-1)) $ gets sp
+    sp' <- gets $ (+ (-1)) . sp
     modify (\cpu -> cpu {sp = sp', mem = replaceNth sp' x (mem cpu) })
 
 incCyclesBy :: Int -> State DCPUState ()
@@ -184,4 +184,4 @@ runUntil p st i = if p i then return [] else do
 
 runProgram p = map fst $ runIdentity $
         runUntil (\cpu -> hlt cpu > 0) pulse (loadProgram p startingDCPUState)
-execProgram p = last $ runProgram p
+execProgram = last . runProgram
