@@ -26,9 +26,6 @@ instance Show DCPUState where
             pairs = [("HLT", hlt), ("PC", pc), ("SP", sp), ("*SP", access sp mem), ("O", o)] ++
                 zip ["A","B","C","X","Y","Z","I","J"] regFile
 
-data Instruction = Instruction BasicOpcode Word8 Word8
-    deriving (Eq, Show)
-
 data CellAddr = Mem Word16 | Register Word8 | SP | PC | O | Literal
     deriving (Eq, Show)
 
