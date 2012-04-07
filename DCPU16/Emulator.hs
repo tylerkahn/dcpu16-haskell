@@ -1,7 +1,7 @@
 {-# LANGUAGE TupleSections #-}
 
 module DCPU16.Emulator (DCPUState (..), loadProgram,
-    startingDCPUState, runProgram, execProgram) where
+    startingDCPUState, pulse, runProgram, execProgram) where
 
 import Data.Word
 import Data.Bits
