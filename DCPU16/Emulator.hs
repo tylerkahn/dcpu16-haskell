@@ -58,6 +58,13 @@ nextWord :: State DCPUState Word16
 nextWord = modify (\cpu -> cpu { pc = 1 + pc cpu }) >> gets currentWord
 skip = void nextWord
 
+skipNextInstruction = do
+    cpu <- get
+    (_, arg1, arg2) <- decodeWord `fmap` nextWord
+    operandAction arg1 >> operandAction arg2
+    modify (\cpu' -> cpu { pc = pc cpu' })
+
+
 push :: Word16 -> State DCPUState ()
 push x = do
     sp' <- liftM (+ (-1)) $ gets sp
@@ -104,12 +111,6 @@ operandAction a
             return (val, Mem nWord)
     | a == 0x1f = liftM (, Literal) nextWord
     | otherwise = return (fromIntegral (a - 32), Literal)
-
-skipNextInstruction = do
-    cpu <- get
-    (_, arg1, arg2) <- decodeWord `fmap` nextWord
-    operandAction arg1 >> operandAction arg2
-    modify (\cpu' -> cpu { pc = pc cpu' })
 
 set :: CellAddr -> Word16 -> State DCPUState ()
 set (Register a) b = modify (\cpu -> cpu { registerFile = replaceNth a b (registerFile cpu) })
