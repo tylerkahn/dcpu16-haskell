@@ -15,7 +15,7 @@ Example:
     :data DAT "a string literal followed by two integer literals", 42, 0x30
 
 ### Labels as Literals
-Labels can be used wherever literal integers can (except in the .word directive).
+Labels can be used wherever literal integers can (except in a storage directive).
 
     SET X, answer       ; X = 5
     SET J, 1
