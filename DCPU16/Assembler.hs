@@ -65,7 +65,7 @@ registers = upperCase [A ..]
 -- Parser
 
 lexer = P.makeTokenParser $ emptyDef {
-            P.identStart = letter <|> char '.',
+            P.identStart = letter <|> oneOf "._",
             P.commentLine = ";",
             P.reservedNames = dyadicMnemonics ++ monadicMnemonics
                 ++ mnemonics ++ stackOperands ++ registers,
