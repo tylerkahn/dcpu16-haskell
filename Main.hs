@@ -21,6 +21,7 @@ myProgramBin =      [0x7c01,0x0030,0x7de1,0x1000,
 
 myProgram = [str|
         ; Try some basic stuff
+                      SET Y, [answer]
                       SET A, 0x30              ; 7c01 0030
                       SET [0x1000], 0x20       ; 7de1 1000 0020
                       SUB A, [0x1000]          ; 7803 1000
@@ -43,8 +44,12 @@ myProgram = [str|
         :testsub      SHL X, 4                 ; 9037
                       SET PC, POP              ; 61c1
 
-        ; Halt. X should now be 0x40 if everything went right.
+
+        ; Halt. X should now be 0x40 and Y should be 42
+        ; if everything went right.
         :crash        HLT                      ; 0000
+        :answer       .word 42                 ; 002a
+        :question     .stringz "What do you get if you multiply six by nine?"
 |]
 
 assembleAndExecute p pName = fmap execProgram $ assemble p pName

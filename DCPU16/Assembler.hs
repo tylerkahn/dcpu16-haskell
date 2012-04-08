@@ -10,7 +10,7 @@ import qualified Text.Parsec.Token as P
 import Data.Word hiding (Word)
 import Control.Applicative ((<$>))
 import Data.Char (toUpper, toLower, ord)
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.Map (Map, lookup, empty, insert, union, fromList)
 import Data.Bits
 
@@ -74,8 +74,8 @@ lexer = P.makeTokenParser $ emptyDef {
 symbol = P.symbol lexer
 identifier = P.identifier lexer
 brackets = P.brackets lexer
-word16 = P.natural lexer >>= return . fromIntegral
-int16 = P.integer lexer >>= return . fromIntegral
+word16 = fromIntegral <$> P.natural lexer
+int16 = fromIntegral <$> P.integer lexer
 stringLiteral = P.stringLiteral lexer
 whiteSpace = P.whiteSpace lexer
 
@@ -135,18 +135,18 @@ program = do{ whiteSpace; stmts <- many statement; eof; return stmts;}
 directiveCodeGen :: Map Label Word16 -> Directive -> [Word16]
 directiveCodeGen _ (StringZ s) = map (fromIntegral . ord) s
 directiveCodeGen _ (Word x) = [x]
-directiveCodeGen _ (Operation m) = [(fromIntegral $ fromEnum m) `shiftL` 10]
-directiveCodeGen t (MonadicOperation m a) = catMaybes $ [Just $
+directiveCodeGen _ (Operation m) = [fromIntegral (fromEnum m) `shiftL` 10]
+directiveCodeGen t (MonadicOperation m a) = catMaybes $ (Just $
     (a' `shiftL` 10)
-    .|. (fromIntegral $ fromEnum m) `shiftL` 4]
-    ++ [a'']
+    .|. fromIntegral (fromEnum m) `shiftL` 4)
+    : [a'']
     where
         (a', a'') = operandCodeGen t a
-directiveCodeGen t (DyadicOperation m a b) = catMaybes $ [Just $
+directiveCodeGen t (DyadicOperation m a b) = catMaybes $ (Just $
     (b' `shiftL` 10)
     .|. (a' `shiftL` 4)
-    .|. (fromIntegral $ fromEnum m)]
-    ++ [a'', b'']
+    .|. fromIntegral (fromEnum m))
+    : [a'', b'']
     where
         (a', a'') = operandCodeGen t a
         (b', b'') = operandCodeGen t b
@@ -169,18 +169,18 @@ operandCodeGen _ Push = (0x1a, Nothing)
 operandCodeGen t (Identifier l) = (0x1f, Just $ resolveLabelAddress t l)
 operandCodeGen _ (Literal num) = if num < 32 then (num + 0x20, Nothing) else (0x1f, Just num)
 
-resolveLabelAddress t l = maybe 0 id (lookup l t)
+resolveLabelAddress t l = fromMaybe 0 (lookup l t)
 
 firstPass stmts = fst $ last $ scanl firstPass' (empty, 0) stmts
 
 firstPass' :: (Map Label Word16, Int) -> Statement -> (Map Label Word16, Int)
 firstPass' (m, n) (Statement ls d) = (m', n')
     where
-        m' = union (fromList $ zip ls $ repeat (fromIntegral n)) m
-        n' = n + (length $ directiveCodeGen empty d)
+        m' = fromList (zip ls $ repeat (fromIntegral n)) `union` m
+        n' = n + length (directiveCodeGen empty d)
 
 secondPass stmts = concatMap (\(Statement _ d) -> directiveCodeGen m d) stmts
     where m = firstPass stmts
 
 assemble s fileName = secondPass <$> parse program fileName s
-assembleFile fileName = (fmap secondPass) <$> parseFromFile program fileName
+assembleFile fileName = fmap secondPass <$> parseFromFile program fileName
