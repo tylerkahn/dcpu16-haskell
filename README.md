@@ -29,7 +29,7 @@ This has the nice property such that when the cpu attempts to execute a word of 
 
 ## Todo
 
-- `SET X, [PC]` is an invalid operation. Currently if you write this the assembler will generate a value. There's the option to make this a semantic error, but it's probably best that it be a syntax error.
+- `SET X, [PC]` is an invalid operation. Currently if you write this the assembler will generate a junk value. There's the option to make this a semantic error, but it's probably best that it be a syntax error.
 
 - Referencing undefined labels doesn't throw an error. It will simply give you a 0 back for that label. This is a semantic error that needs to be added.
 
