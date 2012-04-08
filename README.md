@@ -16,9 +16,10 @@ Example:
 ### Labels as Literals
 Labels can be used wherever literal integers can (except in the .word directive).
 
-    SET X, answer       ; X = 4
-    SET Y, [answer]     ; Y = 42
-    :answer DAT 42
+    SET X, answer       ; X = 5
+    SET J, 1
+    SET Y, [answer+J]   ; Y = 66
+    :answer DAT 42, 0x42
 
 ### Break Instruction
 `BRK` is the de-facto way to halt the program execution.
