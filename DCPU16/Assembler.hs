@@ -39,12 +39,15 @@ data Mnemonic = Hlt
     deriving (Show, Eq, Read, Enum)
 
 data Operand = Register Reg
-    | Memory Word16
-    | MemoryOffset Word16 Reg
+    | Memory MemorySynonym
+    | MemoryOffset MemorySynonym Reg
     | MemoryRegister Reg
     | Pop | Push | Peek
     | Identifier Label
     | Literal Word16
+    deriving (Show, Eq, Read)
+
+data MemorySynonym = LiteralMemory Word16 | LabelMemory Label
     deriving (Show, Eq, Read)
 
 data Label = Label String
@@ -83,16 +86,20 @@ mnemonic = read . capitalize <$> choice (map matchString mnemonics)
 dyadicMnemonic = read . capitalize <$> choice (map matchString dyadicMnemonics)
 monadicMnemonic = read . capitalize <$> choice (map matchString monadicMnemonics)
 label = Label <$> (char ':' >> identifier <?> "label")
+labelName = Label <$> identifier
 register = read <$> choice (map matchString registers) <?> "register"
-operand = Identifier . Label <$> identifier
+operand = Identifier <$> labelName
         <|> Register <$> register
         <|> stackOperand
         <|> Literal <$> word16
         <|> MemoryRegister <$> try (brackets register)
-        <|> Memory <$> try (brackets word16)
-        <|> brackets (do {  mem <- word16;  symbol "+";
+        <|> Memory <$> try (brackets memorySynonym)
+        <|> brackets (do {  mem <- memorySynonym; symbol "+";
                             r <- register;
                             return $ MemoryOffset mem r;})
+
+memorySynonym = LabelMemory <$> labelName
+    <|> LiteralMemory <$> word16
 
 memoryDirective = char '.' >> (stringz <|> word)
     where
@@ -149,14 +156,20 @@ operandCodeGen _ (Register SP) = (0x1b, Nothing)
 operandCodeGen _ (Register PC) = (0x1c, Nothing)
 operandCodeGen _ (Register O)  = (0x1d, Nothing)
 operandCodeGen _ (Register r)  = (fromIntegral $ fromEnum r, Nothing)
-operandCodeGen _ (Memory addr) = (0x1e, Just addr)
-operandCodeGen _ (MemoryOffset addr r) = (fromIntegral (fromEnum r + 0x10), Just addr)
+operandCodeGen _ (Memory (LiteralMemory addr)) = (0x1e, Just addr)
+operandCodeGen t (Memory (LabelMemory l)) = (0x1e, Just $ resolveLabelAddress t l)
+operandCodeGen _ (MemoryOffset (LiteralMemory addr) r) =
+    (fromIntegral $ fromEnum r + 0x10, Just addr)
+operandCodeGen t (MemoryOffset (LabelMemory l) r) =
+    (fromIntegral $ fromEnum r + 0x10, Just $ resolveLabelAddress t l)
 operandCodeGen _ (MemoryRegister r) = (fromIntegral (fromEnum r + 0x8), Nothing)
 operandCodeGen _ Pop = (0x18, Nothing)
 operandCodeGen _ Peek = (0x19, Nothing)
 operandCodeGen _ Push = (0x1a, Nothing)
-operandCodeGen t (Identifier l) = (0x1f, Just $ maybe 0 id (lookup l t))
+operandCodeGen t (Identifier l) = (0x1f, Just $ resolveLabelAddress t l)
 operandCodeGen _ (Literal num) = if num < 32 then (num + 0x20, Nothing) else (0x1f, Just num)
+
+resolveLabelAddress t l = maybe 0 id (lookup l t)
 
 firstPass stmts = fst $ last $ scanl firstPass' (empty, 0) stmts
 

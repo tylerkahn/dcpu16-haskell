@@ -47,4 +47,7 @@ myProgram = [str|
         :crash        HLT                      ; 0000
 |]
 
+assembleAndExecute p pName = fmap execProgram $ assemble p pName
+assembleAndExecuteFile fName = (fmap execProgram) `fmap` assembleFile fName
+
 main = print $ fmap execProgram $ assemble myProgram "myProgram"
