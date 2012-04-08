@@ -18,6 +18,10 @@ Labels can be used wherever literal integers can (except in the .word directive)
     :answer .word 42
 
 ### Halt Instruction
+
+    SET X, 42   ; 7c31 2a
+    HLT         ; 0000
+
 Because I'm using a pure state machine to model DCPU execution, I need some way to 'halt' the program in order to display its final state. So to that end I've added the HLT instruction which sets the HLT register to 1, thereby terminating execution and yielding the final state. Because HLT is an operation with no operands, it works out nicely that if you make it a Non-Non-Basic opcode with an 'a' value of 0x0 as in (aaaaaa0000000000), the whole instruction takes on the value 0x0000.
 
 This has the nice property such that when the cpu attempts to execute a word of uninitialized memory, it will halt.
