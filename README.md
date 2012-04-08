@@ -38,3 +38,7 @@ This has the nice property such that when the cpu attempts to execute a word of 
 - Add video memory extension. Will need to have some actions be in the IO monad and therefore I'll need to make use of StateT instead of plain-old State.
 
 - Probably will change HLT to BRK at some point if that gains more traction. I like HLT because it's reminiscent of the halting problem.
+
+- Add support for basic arithmetic expressions wherever lierals can be used.
+
+- Add support for using labels in storage directive (allowing for static computation of the size of a code block).
