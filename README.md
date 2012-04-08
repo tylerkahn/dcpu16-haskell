@@ -39,6 +39,6 @@ This has the nice property such that when the cpu attempts to execute a word of 
 
 - Probably will change HLT to BRK at some point if that gains more traction. I like HLT because it's reminiscent of the halting problem.
 
-- Add support for basic arithmetic expressions wherever lierals can be used.
+- Add support for basic arithmetic expressions wherever literals can be used.
 
-- Add support for using labels in storage directive (allowing for static computation of the size of a code block).
+- Add support for using labels in storage directives (allowing for static computation of the size of a code block).
