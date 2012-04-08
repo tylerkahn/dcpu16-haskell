@@ -11,6 +11,7 @@
 `DAT <string literal | int literal>` initializes a contiguous block of memory with character values or literal values.
 
 Example:
+
     :data DAT "a string literal followed by two integer literals", 42, 0x30
 
 ### Labels as Literals
