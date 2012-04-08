@@ -3,19 +3,21 @@
 ### An emulator and assembler for Notch's DCPU-16 
 
 
-## What's different
+## What's supported
 
 ### Storage Directives
-`.word <integer literal>` initializes a word of memory with the specified value
+`DAT` is the de-facto way to do this.
 
-`.stringz <string literal>` initializes a contiguous block of memory with the value of each character (one character per word) and a null-terminator at the end (word with value 0x0000).
+`DAT <string literal | int literal>` initializes a contiguous block of memory with character values or literal values.
+
+Example: `:data DAT "a string literal followed by two integer literals", 42, 0x30
 
 ### Labels as Literals
 Labels can be used wherever literal integers can (except in the .word directive).
 
     SET X, answer       ; X = 4
     SET Y, [answer]     ; Y = 42
-    :answer .word 42
+    :answer DAT 42
 
 ### Halt Instruction
 

@@ -48,8 +48,8 @@ myProgram = [str|
         ; Halt. X should now be 0x40 and Y should be 42
         ; if everything went right.
         :crash        HLT                      ; 0000
-        :answer       .word 42                 ; 002a
-        :question     .stringz "What do you get if you multiply six by nine?"
+        :answer       DAT 42                   ; 002a
+        :question     DAT "What do you get if you multiply six by nine?", 0
 |]
 
 assembleAndExecute p pName = fmap execProgram $ assemble p pName

@@ -24,10 +24,13 @@ type Program = [Statement]
 data Statement = Statement [Label] Directive
     deriving (Show, Eq)
 
-data Directive = StringZ String | Word Word16
+data Directive = Dat [Data]
     | Operation Mnemonic
     | MonadicOperation MonadicMnemonic Operand
     | DyadicOperation DyadicMnemonic Operand Operand
+    deriving (Show, Eq)
+
+data Data = DataString String | DataWord Word16
     deriving (Show, Eq)
 
 data DyadicMnemonic = NonBasic | Set | Add | Sub | Mul | Div | Mod
@@ -68,7 +71,7 @@ lexer = P.makeTokenParser $ emptyDef {
             P.identStart = letter <|> oneOf "._",
             P.commentLine = ";",
             P.reservedNames = dyadicMnemonics ++ monadicMnemonics
-                ++ mnemonics ++ stackOperands ++ registers,
+                ++ mnemonics ++ stackOperands ++ registers ++ ["DAT"],
             P.caseSensitive = False
         }
 
@@ -78,6 +81,7 @@ brackets = P.brackets lexer
 int16 = fromIntegral <$> P.integer lexer
 stringLiteral = P.stringLiteral lexer
 whiteSpace = P.whiteSpace lexer
+commaSep1 = P.commaSep1 lexer
 
 matchString = try . symbol
 
@@ -101,10 +105,10 @@ operand = Identifier <$> labelName
 memorySynonym = LabelMemory <$> labelName
     <|> LiteralMemory <$> int16
 
-memoryDirective = char '.' >> (stringz <|> word)
+memoryDirective = Dat <$> (symbol "DAT" >> commaSep1 (dataString <|> dataWord))
     where
-        stringz = StringZ <$> (symbol "stringz" >> stringLiteral)
-        word = Word <$> (symbol "word" >> int16)
+        dataString = DataString <$> stringLiteral
+        dataWord = DataWord <$> int16
 
 directive = memoryDirective <|>
     choice [dyadicOperation, monadicOperation, operation]
@@ -133,8 +137,7 @@ program = do{ whiteSpace; stmts <- many statement; eof; return stmts;}
 --         Consider lifting error into parser.
 
 directiveCodeGen :: Map Label Word16 -> Directive -> [Word16]
-directiveCodeGen _ (StringZ s) = map (fromIntegral . ord) s
-directiveCodeGen _ (Word x) = [x]
+directiveCodeGen _ (Dat ds) = concatMap dataCodeGen ds
 directiveCodeGen _ (Operation m) = [fromIntegral (fromEnum m) `shiftL` 10]
 directiveCodeGen t (MonadicOperation m a) = catMaybes $ (Just $
     (a' `shiftL` 10)
@@ -150,6 +153,10 @@ directiveCodeGen t (DyadicOperation m a b) = catMaybes $ (Just $
     where
         (a', a'') = operandCodeGen t a
         (b', b'') = operandCodeGen t b
+
+dataCodeGen :: Data -> [Word16]
+dataCodeGen (DataString s) = map (fromIntegral . ord) s
+dataCodeGen (DataWord w) = [w]
 
 operandCodeGen :: Map Label Word16 -> Operand -> (Word16, Maybe Word16)
 operandCodeGen _ (Register SP) = (0x1b, Nothing)
