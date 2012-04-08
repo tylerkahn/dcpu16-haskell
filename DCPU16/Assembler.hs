@@ -38,7 +38,7 @@ data DyadicMnemonic = NonBasic | Set | Add | Sub | Mul | Div | Mod
     deriving (Show, Eq, Read, Enum)
 data MonadicMnemonic = NonNonBasic | Jsr
     deriving (Show, Eq, Read, Enum)
-data Mnemonic = Hlt
+data Mnemonic = Brk
     deriving (Show, Eq, Read, Enum)
 
 data Operand = Register Reg
@@ -61,7 +61,7 @@ data Reg = A | B | C | X | Y | Z | I | J | PC | O | SP
 
 dyadicMnemonics = upperCase [Set ..]
 monadicMnemonics = upperCase [Jsr ..]
-mnemonics = upperCase [Hlt ..]
+mnemonics = upperCase [Brk ..]
 stackOperands = upperCase [Pop, Push, Peek]
 registers = upperCase [A ..]
 

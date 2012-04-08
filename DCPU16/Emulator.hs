@@ -17,13 +17,13 @@ access :: Integral a => a -> [b] -> b
 access = flip (!!) . fromIntegral
 
 data DCPUState = DCPUState { mem :: [Word16], registerFile :: [Word16],
-    sp :: Word16, pc :: Word16, o :: Word16, cycles :: Int, hlt :: Word16}
+    sp :: Word16, pc :: Word16, o :: Word16, cycles :: Int, brk :: Word16}
         deriving (Eq)
 
 instance Show DCPUState where
-    show (DCPUState mem regFile sp pc o cycles hlt) =
+    show (DCPUState mem regFile sp pc o cycles brk) =
         concatMap (\(l, v) -> l ++ ": " ++ show v ++ " ") pairs  ++ "\n" where
-            pairs = [("HLT", hlt), ("PC", pc), ("SP", sp), ("*SP", access sp mem), ("O", o)] ++
+            pairs = [("BRK", brk), ("PC", pc), ("SP", sp), ("*SP", access sp mem), ("O", o)] ++
                 zip ["A","B","C","X","Y","Z","I","J"] regFile
 
 data CellAddr = Mem Word16 | Register Word8 | SP | PC | O | Literal
@@ -36,7 +36,7 @@ data BasicOpcode = NonBasic | SET | ADD | SUB | MUL | DIV | MOD
 data NonBasicOpcode = NonNonBasic | JSR
     deriving (Show, Eq, Enum)
 
-data NonNonBasicOpcode = HLT
+data NonNonBasicOpcode = BRK
     deriving (Show, Eq, Enum)
 
 startingDCPUState = DCPUState (replicate 0x10000 0) (replicate 8 0) 0 0 0 0 0
@@ -175,7 +175,7 @@ nonBasicInstructionAction o a = do
 
 nonNonBasicInstructionAction :: NonNonBasicOpcode -> State DCPUState ()
 nonNonBasicInstructionAction op
-   | op == HLT = modify (\cpu -> cpu { hlt = 0x1 })
+   | op == BRK = modify (\cpu -> cpu { brk = 0x1 })
 
 pulse :: State DCPUState DCPUState
 pulse = do
@@ -189,5 +189,5 @@ runUntil p st i = if p i then return [] else do
         liftM (return k ++) $ runUntil p st i'
 
 runProgram p = map fst $ runIdentity $
-        runUntil (\cpu -> hlt cpu > 0) pulse (loadProgram p startingDCPUState)
+        runUntil (\cpu -> brk cpu > 0) pulse (loadProgram p startingDCPUState)
 execProgram = last . runProgram
