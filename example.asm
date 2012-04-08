@@ -1,4 +1,3 @@
-
         ; Try some basic stuff
                       SET Y, [word]
                       SET A, 0x30              ; 7c01 0030
@@ -8,23 +7,31 @@
                          SET PC, crash         ; 7dc1 001a [*]
 
         ; Do a loopy thing
-                      SET I, 10                ; a861
-                      SET A, 0x2000            ; 7c01 2000
-        :.loop         SET [0x2000+I], [A]      ; 2161 2000
-                      SUB I, 1                 ; 8463
-                      IFN I, 0                 ; 806d
-                         SET PC, .loop         ; 7dc1 000d [*]
+                      SET I, 10
+                      SET A, 0x2000
+        :.loop         SET [0x2000+I], [A]
+                      SUB I, 1
+                      IFN I, 0
+                         SET PC, .loop
 
         ; Call a subroutine
-                      SET X, 0x4               ; 9031
-                      JSR testsub              ; 7c10 0018 [*]
-                      SET PC, crash            ; 7dc1 001a [*]
+                      SET X, 0x4
+                      JSR testsub
+                      JSR testsum
+                      SET PC, crash
 
-        :testsub      SHL X, 4                 ; 9037
-                      SET PC, POP              ; 61c1
+        :testsub      SHL X, 4
+                      SET PC, POP
+
+        :testsum      ADD J, 1
+                      ADD Z, [word+J]
+                      IFN J, 3
+                        SET PC, testsum
 
 
-        ; Halt. X should now be 0x40 and Y should be 42
+        ; Break. X should now be 0x40 and Y should be 42
+        ; Z should be 294 ('a' + 'b' + 'c')
         ; if everything went right.
-        :crash        HLT                      ; 0000
-        :word         .word 42
+        :crash        BRK                      ; 0000
+        :word         DAT 42, "abc"
+

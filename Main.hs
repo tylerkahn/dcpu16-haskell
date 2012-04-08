@@ -4,24 +4,9 @@ import DCPU16.Emulator
 import DCPU16.Assembler
 import Data.String.Interpolation
 
-notch'sProgramBin = [0x7c01,0x0030,0x7de1,0x1000,
-    0x0020,0x7803,0x1000,0xc00d,0x7dc1,0x001a,
-    0xa861,0x7c01,0x2000,0x2161,0x2000,0x8463,
-    0x806d,0x7dc1,0x000d,0x9031,0x7c10,0x0018,
-    0x7dc1,0x001a,0x9037,0x61c1,0x7dc1,0x001a]
-
--- uses custom HLT instruction instead of
--- looping forever
-myProgramBin =      [0x7c01,0x0030,0x7de1,0x1000,
-    0x0020,0x7803,0x1000,0xc00d,0x7dc1,0x001a,
-    0xa861,0x7c01,0x2000,0x2161,0x2000,0x8463,
-    0x806d,0x7dc1,0x000d,0x9031,0x7c10,0x0018,
-    0x7dc1,0x001a,0x9037,0x61c1,0x0000,0x0000]
-
-
 myProgram = [str|
         ; Try some basic stuff
-                      SET Y, [answer]
+                      SET Y, [word]
                       SET A, 0x30              ; 7c01 0030
                       SET [0x1000], 0x20       ; 7de1 1000 0020
                       SUB A, [0x1000]          ; 7803 1000
@@ -29,23 +14,29 @@ myProgram = [str|
                          SET PC, crash         ; 7dc1 001a [*]
 
         ; Do a loopy thing
-                      SET I, 10                ; a861
-                      SET A, 0x2000            ; 7c01 2000
-        :loop         SET [0x2000+I], [A]      ; 2161 2000
-                      SUB I, 1                 ; 8463
-                      IFN I, 0                 ; 806d
-                         SET PC, loop          ; 7dc1 000d [*]
+                      SET I, 10
+                      SET A, 0x2000
+        :.loop         SET [0x2000+I], [A]
+                      SUB I, 1
+                      IFN I, 0
+                         SET PC, .loop
 
         ; Call a subroutine
-                      SET X, 0x4               ; 9031
-                      JSR testsub              ; 7c10 0018 [*]
-                      SET PC, crash            ; 7dc1 001a [*]
+                      SET X, 0x4
+                      JSR testsub
+                      SET PC, testsum
 
-        :testsub      SHL X, 4                 ; 9037
-                      SET PC, POP              ; 61c1
+        :testsub      SHL X, 4
+                      SET PC, POP
+
+        :testsum      ADD J, 1
+                      ADD Z, [word+J]
+                      IFN J, 3
+                        SET PC, testsum
 
 
-        ; Halt. X should now be 0x40 and Y should be 42
+        ; Break. X should now be 0x40 and Y should be 42
+        ; Z should be 294 ('a' + 'b' + 'c')
         ; if everything went right.
         :crash        BRK                      ; 0000
         :word         DAT 42, "abc"
