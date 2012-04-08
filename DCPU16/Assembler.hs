@@ -75,7 +75,6 @@ lexer = P.makeTokenParser $ emptyDef {
 symbol = P.symbol lexer
 identifier = P.identifier lexer
 brackets = P.brackets lexer
-word16 = fromIntegral <$> P.natural lexer
 int16 = fromIntegral <$> P.integer lexer
 stringLiteral = P.stringLiteral lexer
 whiteSpace = P.whiteSpace lexer
@@ -92,7 +91,7 @@ register = read <$> choice (map matchString registers) <?> "register"
 operand = Identifier <$> labelName
         <|> Register <$> register
         <|> stackOperand
-        <|> Literal <$> word16
+        <|> Literal <$> int16
         <|> MemoryRegister <$> try (brackets register)
         <|> Memory <$> try (brackets memorySynonym)
         <|> brackets (do {  mem <- memorySynonym; symbol "+";
@@ -100,7 +99,7 @@ operand = Identifier <$> labelName
                             return $ MemoryOffset mem r;})
 
 memorySynonym = LabelMemory <$> labelName
-    <|> LiteralMemory <$> word16
+    <|> LiteralMemory <$> int16
 
 memoryDirective = char '.' >> (stringz <|> word)
     where
