@@ -39,7 +39,7 @@ data NonBasicOpcode = NonNonBasic | JSR
 data NonNonBasicOpcode = HLT
     deriving (Show, Eq, Enum)
 
-startingDCPUState = DCPUState (replicate 0x10000 0) (replicate 8 0) 0xffff 0 0 0 0
+startingDCPUState = DCPUState (replicate 0x10000 0) (replicate 8 0) 0 0 0 0 0
 
 loadProgram :: [Word16] -> DCPUState -> DCPUState
 loadProgram p cpu = cpu { mem = mem' } where
