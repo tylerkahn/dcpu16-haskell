@@ -33,7 +33,10 @@ data BasicOpcode = NonBasic | SET | ADD | SUB | MUL | DIV | MOD
     | SHL | SHR | AND | BOR | XOR | IFE | IFN | IFG | IFB
         deriving (Show, Eq, Enum)
 
-data NonBasicOpcode = Reserved | JSR | HLT
+data NonBasicOpcode = NonNonBasic | JSR
+    deriving (Show, Eq, Enum)
+
+data NonNonBasicOpcode = HLT
     deriving (Show, Eq, Enum)
 
 startingDCPUState = DCPUState (replicate 0x10000 0) (replicate 8 0) 0xffff 0 0 0 0
@@ -60,7 +63,6 @@ skipNextInstruction = do
     (_, arg1, arg2) <- decodeWord `fmap` nextWord
     operandAction arg1 >> operandAction arg2
     modify (\cpu' -> cpu { pc = pc cpu' })
-
 
 push :: Word16 -> State DCPUState ()
 push x = do
@@ -152,21 +154,28 @@ instructionAction' op a b addr
     | op == IFB = unless ((a .&. b) /= 0) skipNextInstruction
 
 instructionAction :: Integral a => BasicOpcode -> a -> a -> State DCPUState ()
-instructionAction NonBasic o a = do
-    (a', addr) <- operandAction a
-    nonBasicInstructionAction (toEnum $ fromIntegral o) (fromIntegral a') addr
+instructionAction NonBasic o a = nonBasicInstructionAction (toEnum $ fromIntegral o) a
 instructionAction o a b = do
     (a', addr) <- operandAction a
     (b', _) <- operandAction b
     instructionAction' o (fromIntegral a') (fromIntegral b') addr
 
-nonBasicInstructionAction :: Integral a => NonBasicOpcode -> a -> CellAddr -> State DCPUState ()
-nonBasicInstructionAction op a addr
+nonBasicInstructionAction' :: NonBasicOpcode -> Word16 -> CellAddr -> State DCPUState ()
+nonBasicInstructionAction' op a addr
     | op == JSR = do
         pc' <- gets pc
         push $ pc' + 1
-        modify (\cpu -> cpu { pc = fromIntegral (a - 1) })
-    | op == HLT = modify (\cpu -> cpu { hlt = 0x1 })
+        modify (\cpu -> cpu { pc = a - 1 })
+
+nonBasicInstructionAction :: Integral a => NonBasicOpcode -> a -> State DCPUState ()
+nonBasicInstructionAction NonNonBasic a = nonNonBasicInstructionAction $ toEnum $ fromIntegral a
+nonBasicInstructionAction o a = do
+    (a', addr) <- operandAction a
+    nonBasicInstructionAction' o (fromIntegral a') addr
+
+nonNonBasicInstructionAction :: NonNonBasicOpcode -> State DCPUState ()
+nonNonBasicInstructionAction op
+   | op == HLT = modify (\cpu -> cpu { hlt = 0x1 })
 
 pulse :: State DCPUState DCPUState
 pulse = do
